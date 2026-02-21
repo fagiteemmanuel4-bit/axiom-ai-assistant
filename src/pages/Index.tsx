@@ -71,6 +71,50 @@ const Index = () => {
     }
   }, [messages]);
 
+  const handleEdit = useCallback(async (messageId: string, newContent: string) => {
+    if (isLoading) return;
+    // Find the message index, truncate everything after it, and resend
+    const idx = messages.findIndex((m) => m.id === messageId);
+    if (idx === -1) return;
+
+    const updatedMsg: Message = { ...messages[idx], content: newContent };
+    const kept = [...messages.slice(0, idx), updatedMsg];
+    setMessages(kept);
+    setIsLoading(true);
+
+    const assistantId = generateId();
+    let assistantSoFar = "";
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const upsert = (chunk: string) => {
+      assistantSoFar += chunk;
+      const content = assistantSoFar;
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant" && last.id === assistantId) {
+          return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content } : m));
+        }
+        return [...prev, { id: assistantId, role: "assistant", content }];
+      });
+    };
+
+    try {
+      await streamChat({
+        messages: kept.map((m) => ({ role: m.role, content: m.content })),
+        onDelta: upsert,
+        onDone: () => setIsLoading(false),
+        signal: controller.signal,
+      });
+    } catch (e: any) {
+      if (e.name !== "AbortError") {
+        console.error(e);
+        upsert("\n\n*Sorry, something went wrong. Please try again.*");
+      }
+      setIsLoading(false);
+    }
+  }, [messages, isLoading]);
+
   const handleHome = () => {
     if (abortRef.current) abortRef.current.abort();
     setMessages([]);
@@ -100,7 +144,7 @@ const Index = () => {
         ) : (
           <div className="mx-auto max-w-3xl space-y-6 px-4 py-6">
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
+              <MessageBubble key={msg.id} message={msg} onEdit={handleEdit} isLoading={isLoading} />
             ))}
             {isLoading && messages[messages.length - 1]?.role === "user" && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
