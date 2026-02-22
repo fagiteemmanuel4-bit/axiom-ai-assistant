@@ -31,16 +31,16 @@ const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pb-2">
-      <div className="flex items-end gap-2 rounded-[14px] border border-border bg-secondary px-4 py-2">
+    <div className="mx-auto w-full max-w-3xl px-4 pb-3">
+      <div className="flex items-center gap-2 rounded-[14px] border border-border bg-secondary px-4 py-3">
         <textarea
           ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask Axiom"
+          placeholder="Ask Axiom anything..."
           rows={1}
-          className="max-h-[120px] flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+          className="max-h-[120px] flex-1 resize-none bg-transparent text-sm leading-5 text-foreground placeholder:text-muted-foreground focus:outline-none"
         />
         <button
           onClick={handleSubmit}
