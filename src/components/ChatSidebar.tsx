@@ -16,7 +16,7 @@ const ChatSidebar = ({ sessions, activeId, open, onSelect, onNew, onDelete, onCl
     <>
       {/* Overlay for mobile */}
       {open &&
-      <div className="fixed inset-0 z-30 bg-black/50" onClick={onClose} />
+      <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       }
       <aside
         className={`fixed left-0 top-0 z-40 flex h-full w-72 flex-col border-r border-border bg-card transition-transform duration-200 ${
