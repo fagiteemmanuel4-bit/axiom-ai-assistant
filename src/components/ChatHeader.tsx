@@ -1,4 +1,4 @@
-import axiomLogo from "@/assets/axiom-logo.png";
+import axiomLogo from "@/assets/axiom-logo-new.png";
 import { toast } from "@/hooks/use-toast";
 
 interface ChatHeaderProps {
@@ -11,12 +11,12 @@ const ChatHeader = ({ onToggleSidebar }: ChatHeaderProps) => {
       <div className="flex items-center gap-2">
         <button
           onClick={onToggleSidebar}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           title="Toggle sidebar"
         >
-          <i className="bi bi-layout-sidebar text-base" />
+          <i className="bi bi-list text-xl" />
         </button>
-        <img src={axiomLogo} alt="Axiom" className="h-20 w-40" />
+        <img src={axiomLogo} alt="Axiom" className="h-8 w-auto" />
       </div>
       <button
         onClick={() => toast({ title: "Axiom authentication coming soon!" })}
