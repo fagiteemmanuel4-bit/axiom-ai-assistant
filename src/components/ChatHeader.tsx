@@ -16,7 +16,7 @@ const ChatHeader = ({ onToggleSidebar }: ChatHeaderProps) => {
 
           <i className="bi bi-list text-xl" />
         </button>
-        <img src={axiomLogo} alt="Axiom" className="h-20 w-50" />
+        <img src={axiomLogo} alt="Axiom" className="h-500 w-500" />
       </div>
       <button
         onClick={() => toast({ title: "Axiom authentication coming soon!" })}
