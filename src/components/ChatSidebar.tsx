@@ -24,7 +24,7 @@ const ChatSidebar = ({ sessions, activeId, open, onSelect, onNew, onDelete, onCl
         }>
 
         <div className="flex items-center justify-between border-b border-border px-3 py-3">
-          <img src={axiomLogo} alt="Axiom" className="h-30 w-200" />
+          <img src={axiomLogo} alt="Axiom" className="h-50 w-20" />
           <div className="flex items-center gap-1">
             <button
               onClick={onNew}
