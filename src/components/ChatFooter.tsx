@@ -9,6 +9,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import ReviewDialog from "./ReviewDialog";
 
 interface ChatFooterProps {
   onHome: () => void;
@@ -18,10 +19,8 @@ interface ChatFooterProps {
 const ChatFooter = ({ onHome, onClear }: ChatFooterProps) => {
   return (
     <div className="flex items-center justify-between px-4 py-2 text-xs text-muted-foreground">
-      <button onClick={onHome} className="p-2 transition-colors hover:text-foreground" title="Home">
-        <i className="bi bi-house text-base" />
-      </button>
-      <span className="hidden sm:inline">Axiom can make mistakes please review its responses</span>
+      <ReviewDialog />
+      <span className="hidden sm:inline">Axiom can make mistakes — please review its responses</span>
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <button className="p-2 transition-colors hover:text-foreground" title="Clear chat">
