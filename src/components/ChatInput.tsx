@@ -32,7 +32,7 @@ const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-2">
-      <div className="flex items-end gap-2 rounded-full border border-border bg-secondary px-4 py-2">
+      <div className="flex items-end gap-2 rounded-[14px] border border-border bg-secondary px-4 py-2">
         <textarea
           ref={textareaRef}
           value={input}

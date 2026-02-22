@@ -2,29 +2,57 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import ChatHeader from "@/components/ChatHeader";
 import ChatInput from "@/components/ChatInput";
 import ChatFooter from "@/components/ChatFooter";
+import ChatSidebar from "@/components/ChatSidebar";
 import MessageBubble from "@/components/MessageBubble";
 import {
   type Message,
-  loadMessages,
-  saveMessages,
-  clearMessages,
   generateId,
   streamChat,
 } from "@/lib/chat";
+import {
+  type ChatSession,
+  loadSessions,
+  saveSessions,
+  generateSessionId,
+  getActiveSessionId,
+  setActiveSessionId,
+  deleteSession,
+  getSessionTitle,
+} from "@/lib/chatHistory";
 
 const Index = () => {
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Load sessions on mount
   useEffect(() => {
-    setMessages(loadMessages());
+    const loaded = loadSessions();
+    setSessions(loaded);
+    const savedActive = getActiveSessionId();
+    if (savedActive && loaded.find((s) => s.id === savedActive)) {
+      setActiveId(savedActive);
+      setMessages(loaded.find((s) => s.id === savedActive)!.messages);
+    }
   }, []);
 
+  // Persist sessions when messages change
   useEffect(() => {
-    if (messages.length > 0) saveMessages(messages);
-  }, [messages]);
+    if (!activeId || messages.length === 0) return;
+    setSessions((prev) => {
+      const updated = prev.map((s) =>
+        s.id === activeId
+          ? { ...s, messages, title: getSessionTitle(messages), updatedAt: Date.now() }
+          : s
+      );
+      saveSessions(updated);
+      return updated;
+    });
+  }, [messages, activeId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -32,9 +60,61 @@ const Index = () => {
     }
   }, [messages]);
 
+  const startNewChat = useCallback(() => {
+    if (abortRef.current) abortRef.current.abort();
+    setActiveId(null);
+    setActiveSessionId(null);
+    setMessages([]);
+    setIsLoading(false);
+  }, []);
+
+  const selectSession = useCallback((id: string) => {
+    if (abortRef.current) abortRef.current.abort();
+    setIsLoading(false);
+    const session = sessions.find((s) => s.id === id);
+    if (session) {
+      setActiveId(id);
+      setActiveSessionId(id);
+      setMessages(session.messages);
+    }
+    setSidebarOpen(false);
+  }, [sessions]);
+
+  const handleDeleteSession = useCallback((id: string) => {
+    setSessions((prev) => {
+      const updated = deleteSession(prev, id);
+      saveSessions(updated);
+      return updated;
+    });
+    if (activeId === id) {
+      setActiveId(null);
+      setActiveSessionId(null);
+      setMessages([]);
+    }
+  }, [activeId]);
+
   const handleSend = useCallback(async (input: string) => {
     const userMsg: Message = { id: generateId(), role: "user", content: input };
     const assistantId = generateId();
+
+    // Create session if none active
+    let sessionId = activeId;
+    if (!sessionId) {
+      sessionId = generateSessionId();
+      const newSession: ChatSession = {
+        id: sessionId,
+        title: input.slice(0, 40),
+        messages: [],
+        updatedAt: Date.now(),
+      };
+      setSessions((prev) => {
+        const updated = [newSession, ...prev];
+        saveSessions(updated);
+        return updated;
+      });
+      setActiveId(sessionId);
+      setActiveSessionId(sessionId);
+    }
 
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
@@ -69,11 +149,10 @@ const Index = () => {
       }
       setIsLoading(false);
     }
-  }, [messages]);
+  }, [messages, activeId]);
 
   const handleEdit = useCallback(async (messageId: string, newContent: string) => {
     if (isLoading) return;
-    // Find the message index, truncate everything after it, and resend
     const idx = messages.findIndex((m) => m.id === messageId);
     if (idx === -1) return;
 
@@ -115,49 +194,59 @@ const Index = () => {
     }
   }, [messages, isLoading]);
 
-  const handleHome = () => {
-    if (abortRef.current) abortRef.current.abort();
-    setMessages([]);
-    setIsLoading(false);
-  };
-
   const handleClear = () => {
     if (abortRef.current) abortRef.current.abort();
-    clearMessages();
+    setSessions([]);
+    saveSessions([]);
+    setActiveId(null);
+    setActiveSessionId(null);
     setMessages([]);
     setIsLoading(false);
   };
 
   const isEmpty = messages.length === 0;
+  const sortedSessions = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
 
   return (
-    <div className="flex h-screen flex-col bg-background">
-      <ChatHeader />
+    <div className="flex h-screen bg-background">
+      <ChatSidebar
+        sessions={sortedSessions}
+        activeId={activeId}
+        open={sidebarOpen}
+        onSelect={selectSession}
+        onNew={startNewChat}
+        onDelete={handleDeleteSession}
+        onClose={() => setSidebarOpen(false)}
+      />
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        {isEmpty ? (
-          <div className="flex h-full items-center justify-center px-4">
-            <h1 className="text-center text-2xl font-semibold text-foreground md:text-3xl">
-              What's on your mind today?
-            </h1>
-          </div>
-        ) : (
-          <div className="mx-auto max-w-3xl space-y-6 px-4 py-6">
-            {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} onEdit={handleEdit} isLoading={isLoading} />
-            ))}
-            {isLoading && messages[messages.length - 1]?.role === "user" && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="h-2 w-2 animate-pulse rounded-full bg-muted-foreground" />
-                <span>Axiom is thinking...</span>
-              </div>
-            )}
-          </div>
-        )}
+      <div className="flex flex-1 flex-col">
+        <ChatHeader onToggleSidebar={() => setSidebarOpen((p) => !p)} />
+
+        <div ref={scrollRef} className="flex-1 overflow-y-auto">
+          {isEmpty ? (
+            <div className="flex h-full items-center justify-center px-4">
+              <h1 className="text-center text-2xl font-semibold text-foreground md:text-3xl">
+                What's on your mind today?
+              </h1>
+            </div>
+          ) : (
+            <div className="mx-auto max-w-3xl space-y-6 px-4 py-6">
+              {messages.map((msg) => (
+                <MessageBubble key={msg.id} message={msg} onEdit={handleEdit} isLoading={isLoading} />
+              ))}
+              {isLoading && messages[messages.length - 1]?.role === "user" && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="h-2 w-2 animate-pulse rounded-full bg-muted-foreground" />
+                  <span>Axiom is thinking...</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <ChatInput onSend={handleSend} isLoading={isLoading} />
+        <ChatFooter onHome={startNewChat} onClear={handleClear} />
       </div>
-
-      <ChatInput onSend={handleSend} isLoading={isLoading} />
-      <ChatFooter onHome={handleHome} onClear={handleClear} />
     </div>
   );
 };
