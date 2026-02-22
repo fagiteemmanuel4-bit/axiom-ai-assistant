@@ -12,20 +12,20 @@ const ChatHeader = ({ onToggleSidebar }: ChatHeaderProps) => {
         <button
           onClick={onToggleSidebar}
           className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          title="Toggle sidebar"
-        >
+          title="Toggle sidebar">
+
           <i className="bi bi-list text-xl" />
         </button>
-        <img src={axiomLogo} alt="Axiom" className="h-8 w-auto" />
+        <img src={axiomLogo} alt="Axiom" className="h-20 w-50" />
       </div>
       <button
         onClick={() => toast({ title: "Axiom authentication coming soon!" })}
-        className="rounded-full border border-border px-4 py-1.5 text-sm text-foreground transition-colors hover:bg-secondary"
-      >
+        className="rounded-full border border-border px-4 py-1.5 text-sm text-foreground transition-colors hover:bg-secondary">
+
         Login
       </button>
-    </header>
-  );
+    </header>);
+
 };
 
 export default ChatHeader;
