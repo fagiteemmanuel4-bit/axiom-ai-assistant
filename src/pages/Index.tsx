@@ -3,23 +3,16 @@ import ChatHeader from "@/components/ChatHeader";
 import ChatInput from "@/components/ChatInput";
 import ChatSidebar from "@/components/ChatSidebar";
 import MessageBubble from "@/components/MessageBubble";
+import { type Message, generateId, streamChat } from "@/lib/chat";
 import {
-  type Message,
-  generateId,
-  streamChat,
-} from "@/lib/chat";
-import {
-  type ChatSession,
-  loadSessions,
-  saveSessions,
-  generateSessionId,
-  getActiveSessionId,
-  setActiveSessionId,
-  deleteSession,
-  getSessionTitle,
+  type ChatSession, loadSessions, saveSessions, generateSessionId,
+  getActiveSessionId, setActiveSessionId, deleteSession, getSessionTitle,
 } from "@/lib/chatHistory";
+import { playMessageSound } from "@/lib/sounds";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
+  const { user } = useAuth();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -28,7 +21,6 @@ const Index = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Load sessions on mount
   useEffect(() => {
     const loaded = loadSessions();
     setSessions(loaded);
@@ -39,14 +31,11 @@ const Index = () => {
     }
   }, []);
 
-  // Persist sessions when messages change
   useEffect(() => {
     if (!activeId || messages.length === 0) return;
     setSessions((prev) => {
       const updated = prev.map((s) =>
-        s.id === activeId
-          ? { ...s, messages, title: getSessionTitle(messages), updatedAt: Date.now() }
-          : s
+        s.id === activeId ? { ...s, messages, title: getSessionTitle(messages), updatedAt: Date.now() } : s
       );
       saveSessions(updated);
       return updated;
@@ -54,65 +43,37 @@ const Index = () => {
   }, [messages, activeId]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
   const startNewChat = useCallback(() => {
     if (abortRef.current) abortRef.current.abort();
-    setActiveId(null);
-    setActiveSessionId(null);
-    setMessages([]);
-    setIsLoading(false);
+    setActiveId(null); setActiveSessionId(null); setMessages([]); setIsLoading(false);
   }, []);
 
   const selectSession = useCallback((id: string) => {
     if (abortRef.current) abortRef.current.abort();
     setIsLoading(false);
     const session = sessions.find((s) => s.id === id);
-    if (session) {
-      setActiveId(id);
-      setActiveSessionId(id);
-      setMessages(session.messages);
-    }
+    if (session) { setActiveId(id); setActiveSessionId(id); setMessages(session.messages); }
     setSidebarOpen(false);
   }, [sessions]);
 
   const handleDeleteSession = useCallback((id: string) => {
-    setSessions((prev) => {
-      const updated = deleteSession(prev, id);
-      saveSessions(updated);
-      return updated;
-    });
-    if (activeId === id) {
-      setActiveId(null);
-      setActiveSessionId(null);
-      setMessages([]);
-    }
+    setSessions((prev) => { const updated = deleteSession(prev, id); saveSessions(updated); return updated; });
+    if (activeId === id) { setActiveId(null); setActiveSessionId(null); setMessages([]); }
   }, [activeId]);
 
   const handleSend = useCallback(async (input: string) => {
     const userMsg: Message = { id: generateId(), role: "user", content: input };
     const assistantId = generateId();
 
-    // Create session if none active
     let sessionId = activeId;
     if (!sessionId) {
       sessionId = generateSessionId();
-      const newSession: ChatSession = {
-        id: sessionId,
-        title: input.slice(0, 40),
-        messages: [],
-        updatedAt: Date.now(),
-      };
-      setSessions((prev) => {
-        const updated = [newSession, ...prev];
-        saveSessions(updated);
-        return updated;
-      });
-      setActiveId(sessionId);
-      setActiveSessionId(sessionId);
+      const newSession: ChatSession = { id: sessionId, title: input.slice(0, 40), messages: [], updatedAt: Date.now() };
+      setSessions((prev) => { const updated = [newSession, ...prev]; saveSessions(updated); return updated; });
+      setActiveId(sessionId); setActiveSessionId(sessionId);
     }
 
     setMessages((prev) => [...prev, userMsg]);
@@ -121,9 +82,11 @@ const Index = () => {
     let assistantSoFar = "";
     const controller = new AbortController();
     abortRef.current = controller;
+    let soundPlayed = false;
 
     const upsert = (chunk: string) => {
       assistantSoFar += chunk;
+      if (!soundPlayed) { playMessageSound(); soundPlayed = true; }
       const content = assistantSoFar;
       setMessages((prev) => {
         const last = prev[prev.length - 1];
@@ -142,10 +105,7 @@ const Index = () => {
         signal: controller.signal,
       });
     } catch (e: any) {
-      if (e.name !== "AbortError") {
-        console.error(e);
-        upsert("\n\n*Sorry, something went wrong. Please try again.*");
-      }
+      if (e.name !== "AbortError") { console.error(e); upsert("\n\n*Sorry, something went wrong. Please try again.*"); }
       setIsLoading(false);
     }
   }, [messages, activeId]);
@@ -154,12 +114,9 @@ const Index = () => {
     if (isLoading) return;
     const idx = messages.findIndex((m) => m.id === messageId);
     if (idx === -1) return;
-
-    const updatedMsg: Message = { ...messages[idx], content: newContent };
-    const kept = [...messages.slice(0, idx), updatedMsg];
+    const kept = [...messages.slice(0, idx), { ...messages[idx], content: newContent }];
     setMessages(kept);
     setIsLoading(true);
-
     const assistantId = generateId();
     let assistantSoFar = "";
     const controller = new AbortController();
@@ -170,53 +127,34 @@ const Index = () => {
       const content = assistantSoFar;
       setMessages((prev) => {
         const last = prev[prev.length - 1];
-        if (last?.role === "assistant" && last.id === assistantId) {
-          return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content } : m));
-        }
+        if (last?.role === "assistant" && last.id === assistantId) return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content } : m));
         return [...prev, { id: assistantId, role: "assistant", content }];
       });
     };
 
     try {
-      await streamChat({
-        messages: kept.map((m) => ({ role: m.role, content: m.content })),
-        onDelta: upsert,
-        onDone: () => setIsLoading(false),
-        signal: controller.signal,
-      });
+      await streamChat({ messages: kept.map((m) => ({ role: m.role, content: m.content })), onDelta: upsert, onDone: () => setIsLoading(false), signal: controller.signal });
     } catch (e: any) {
-      if (e.name !== "AbortError") {
-        console.error(e);
-        upsert("\n\n*Sorry, something went wrong. Please try again.*");
-      }
+      if (e.name !== "AbortError") { console.error(e); upsert("\n\n*Sorry, something went wrong. Please try again.*"); }
       setIsLoading(false);
     }
   }, [messages, isLoading]);
 
   const handleClear = () => {
     if (abortRef.current) abortRef.current.abort();
-    setSessions([]);
-    saveSessions([]);
-    setActiveId(null);
-    setActiveSessionId(null);
-    setMessages([]);
-    setIsLoading(false);
+    setSessions([]); saveSessions([]); setActiveId(null); setActiveSessionId(null); setMessages([]); setIsLoading(false);
   };
 
   const isEmpty = messages.length === 0;
   const sortedSessions = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
+  const greeting = user?.displayName?.split(" ")[0] || "there";
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       <ChatSidebar
-        sessions={sortedSessions}
-        activeId={activeId}
-        open={sidebarOpen}
-        onSelect={selectSession}
-        onNew={startNewChat}
-        onDelete={handleDeleteSession}
-        onClose={() => setSidebarOpen(false)}
-        onClear={handleClear}
+        sessions={sortedSessions} activeId={activeId} open={sidebarOpen}
+        onSelect={selectSession} onNew={startNewChat} onDelete={handleDeleteSession}
+        onClose={() => setSidebarOpen(false)} onClear={handleClear}
       />
 
       <div className="flex flex-1 flex-col h-screen overflow-hidden">
@@ -227,9 +165,12 @@ const Index = () => {
         <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
           {isEmpty ? (
             <div className="flex h-full items-center justify-center px-4">
-              <h1 className="text-center text-2xl font-semibold text-foreground md:text-3xl">
-                What's on your mind today?
-              </h1>
+              <div className="text-center space-y-2">
+                <h1 className="text-2xl font-semibold text-foreground md:text-3xl">
+                  Hey {greeting} 👋
+                </h1>
+                <p className="text-muted-foreground">What's on your mind today?</p>
+              </div>
             </div>
           ) : (
             <div className="mx-auto max-w-3xl space-y-6 px-4 py-6">
