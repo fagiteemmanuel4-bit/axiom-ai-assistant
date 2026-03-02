@@ -54,10 +54,10 @@ const ReviewDialog = () => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button
-          className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
           <i className="bi bi-star text-xs" />
-          <span>Review</span>
+          <span>Leave a review</span>
         </button>
       </DialogTrigger>
       <DialogContent className="border-border bg-card sm:max-w-md">

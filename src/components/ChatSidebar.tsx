@@ -1,5 +1,17 @@
 import type { ChatSession } from "@/lib/chatHistory";
 import axiomLogo from "@/assets/axiom-logo-new.png";
+import ReviewDialog from "./ReviewDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface ChatSidebarProps {
   sessions: ChatSession[];
@@ -9,9 +21,10 @@ interface ChatSidebarProps {
   onNew: () => void;
   onDelete: (id: string) => void;
   onClose: () => void;
+  onClear: () => void;
 }
 
-const ChatSidebar = ({ sessions, activeId, open, onSelect, onNew, onDelete, onClose }: ChatSidebarProps) => {
+const ChatSidebar = ({ sessions, activeId, open, onSelect, onNew, onDelete, onClose, onClear }: ChatSidebarProps) => {
   return (
     <>
       {/* Overlay for mobile */}
@@ -72,6 +85,38 @@ const ChatSidebar = ({ sessions, activeId, open, onSelect, onNew, onDelete, onCl
               </div>
           )
           }
+        </div>
+
+        {/* Bottom actions */}
+        <div className="shrink-0 border-t border-border px-3 py-3 space-y-2">
+          <ReviewDialog />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+                <i className="bi bi-trash text-xs" />
+                <span>Clear all chats</span>
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="border-border bg-card">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear chat history</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to clear all chat history? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-muted">
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={onClear}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Confirm
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </aside>
     </>);
