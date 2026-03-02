@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import ChatHeader from "@/components/ChatHeader";
 import ChatInput from "@/components/ChatInput";
-import ChatFooter from "@/components/ChatFooter";
 import ChatSidebar from "@/components/ChatSidebar";
 import MessageBubble from "@/components/MessageBubble";
 import {
@@ -217,12 +216,15 @@ const Index = () => {
         onNew={startNewChat}
         onDelete={handleDeleteSession}
         onClose={() => setSidebarOpen(false)}
+        onClear={handleClear}
       />
 
-      <div className="flex flex-1 flex-col">
-        <ChatHeader onToggleSidebar={() => setSidebarOpen((p) => !p)} />
+      <div className="flex flex-1 flex-col h-screen overflow-hidden">
+        <div className="shrink-0">
+          <ChatHeader onToggleSidebar={() => setSidebarOpen((p) => !p)} />
+        </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
           {isEmpty ? (
             <div className="flex h-full items-center justify-center px-4">
               <h1 className="text-center text-2xl font-semibold text-foreground md:text-3xl">
@@ -244,8 +246,12 @@ const Index = () => {
           )}
         </div>
 
-        <ChatInput onSend={handleSend} isLoading={isLoading} />
-        <ChatFooter onHome={startNewChat} onClear={handleClear} />
+        <div className="shrink-0">
+          <ChatInput onSend={handleSend} isLoading={isLoading} />
+          <div className="flex items-center justify-center px-4 py-1.5 text-xs text-muted-foreground">
+            <span className="hidden sm:inline">Axiom can make mistakes — please review its responses</span>
+          </div>
+        </div>
       </div>
     </div>
   );
